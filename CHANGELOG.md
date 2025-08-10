@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/Owloops/claude-powerline/compare/v1.0.1...v1.1.0) (2025-08-10)
+
+
+### Bug Fixes
+
+* update tests to match new default configuration structure ([bccca4d](https://github.com/Owloops/claude-powerline/commit/bccca4dc7e0ea454db638983db6fac336d16b841))
+
+
+### Features
+
+* add session block tracking, token breakdown display, and enhanced theming ([b2e15ec](https://github.com/Owloops/claude-powerline/commit/b2e15ec9b8e91aa578bccbe8e8cf65bac83ccde1))
+
 ## [1.0.1](https://github.com/Owloops/claude-powerline/compare/v1.0.0...v1.0.1) (2025-08-10)
 
 
