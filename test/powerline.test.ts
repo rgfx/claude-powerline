@@ -1,202 +1,220 @@
 import { PowerlineRenderer } from "../src/powerline";
 import type { ClaudeHookData } from "../src/types";
+import type { PowerlineConfig } from "../src/types/config";
 
 jest.mock("ccusage/data-loader", () => ({
-  loadSessionUsageById: jest.fn().mockResolvedValue({ totalCost: 0.05 }),
-  loadDailyUsageData: jest.fn().mockResolvedValue([{}]),
+  loadSessionUsageById: jest.fn().mockResolvedValue({
+    totalCost: 0.05,
+    entries: [
+      {
+        message: {
+          usage: {
+            input_tokens: 1000,
+            output_tokens: 500,
+            cache_creation_input_tokens: 100,
+            cache_read_input_tokens: 50,
+          },
+        },
+      },
+    ],
+  }),
+  loadDailyUsageData: jest.fn().mockResolvedValue([
+    {
+      date: "2025-08-10",
+      inputTokens: 5000,
+      outputTokens: 2000,
+      cacheCreationTokens: 300,
+      cacheReadTokens: 500,
+      cost: 1.25,
+    },
+  ]),
+  loadSessionBlockData: jest.fn().mockResolvedValue([
+    {
+      id: "2024-01-01T10:00:00.000Z",
+      startTime: new Date("2024-01-01T10:00:00.000Z"),
+      endTime: new Date("2024-01-01T15:00:00.000Z"),
+      isActive: true,
+      costUSD: 2.5,
+      entries: [],
+      tokenCounts: {
+        inputTokens: 5000,
+        outputTokens: 2000,
+        cacheCreationInputTokens: 500,
+        cacheReadInputTokens: 100,
+      },
+    },
+  ]),
   getClaudePaths: jest.fn().mockReturnValue(["/mock/path"]),
 }));
 
 jest.mock("ccusage/calculate-cost", () => ({
   calculateTotals: jest.fn().mockReturnValue({ totalCost: 1.25 }),
+  getTotalTokens: jest.fn().mockReturnValue(7800),
 }));
 
 jest.mock("ccusage/logger", () => ({
-  logger: { level: 2 },
+  logger: { level: 1 },
 }));
 
 jest.mock("node:child_process", () => ({
-  execSync: jest.fn((cmd: string) => {
-    if (cmd.includes("git branch --show-current")) {
-      return "main\n";
-    }
-    if (cmd.includes("git status --porcelain")) {
-      return "";
-    }
-    if (cmd.includes("git rev-list --count")) {
-      return "0\n";
-    }
+  execSync: jest.fn().mockImplementation((cmd: string) => {
+    if (cmd.includes("git branch --show-current")) return "main\n";
+    if (cmd.includes("git status --porcelain")) return "";
+    if (cmd.includes("tmux display-message -p '#S'")) return "mysession\n";
     return "";
   }),
 }));
 
-describe("PowerlineRenderer", () => {
-  let renderer: PowerlineRenderer;
-
-  beforeEach(() => {
-    renderer = new PowerlineRenderer();
-  });
-
-  const mockHookData: ClaudeHookData = {
+function createHookData(): ClaudeHookData {
+  return {
     hook_event_name: "Status",
-    session_id: "abc123def456ghi789",
+    session_id: "test-session-123",
     transcript_path: "/path/to/transcript.json",
-    cwd: "/current/working/directory",
+    cwd: "/Users/test/claude-powerline",
     model: {
-      id: "claude-opus-4-1",
-      display_name: "Opus",
+      id: "claude-opus-4",
+      display_name: "Claude Opus",
     },
     workspace: {
-      current_dir: "/current/working/directory",
-      project_dir: "/original/project/directory",
+      current_dir: "/Users/test/claude-powerline",
+      project_dir: "/Users/test/claude-powerline",
     },
   };
+}
 
-  const mockHookDataWithSameDir: ClaudeHookData = {
-    hook_event_name: "Status",
-    session_id: "xyz789uvw456rst123",
-    transcript_path: "/path/to/transcript2.json",
-    cwd: "/home/user/myproject",
-    model: {
-      id: "claude-sonnet-3-5",
-      display_name: "Claude 3.5 Sonnet",
+function createConfig(segments: any): PowerlineConfig {
+  return {
+    theme: "light",
+    display: { lines: [{ segments }] },
+    colors: {
+      light: {
+        directory: { bg: "#ff6b47", fg: "#ffffff" },
+        git: { bg: "#4fb3d9", fg: "#ffffff" },
+        model: { bg: "#87ceeb", fg: "#000000" },
+        session: { bg: "#da70d6", fg: "#ffffff" },
+        today: { bg: "#90ee90", fg: "#ffffff" },
+        block: { bg: "#ff8c00", fg: "#ffffff" },
+        tmux: { bg: "#32cd32", fg: "#ffffff" },
+      },
     },
-    workspace: {
-      current_dir: "/home/user/myproject",
-      project_dir: "/home/user/myproject",
-    },
-  };
-
-  const mockHookDataNoGit: ClaudeHookData = {
-    hook_event_name: "Status",
-    session_id: "nogit123456789",
-    transcript_path: "/path/to/transcript3.json",
-    cwd: "/tmp/nogit",
-    model: {
-      id: "claude-haiku-3",
-      display_name: "Haiku",
-    },
-    workspace: {
-      current_dir: "/tmp/nogit",
-      project_dir: "/tmp/nogit",
+    budget: {
+      today: { amount: 50, warningThreshold: 80 },
+      session: { warningThreshold: 80 },
     },
   };
+}
 
-  describe("generateStatusline", () => {
-    it("should generate statusline with git info and costs", async () => {
-      const statusline = await renderer.generateStatusline(
-        mockHookData,
-        "colors"
-      );
+describe("PowerlineRenderer behavior", () => {
+  describe("session usage display", () => {
+    it("shows cost when type is cost", async () => {
+      const config = createConfig({ session: { enabled: true, type: "cost" } });
+      const renderer = new PowerlineRenderer(config);
 
-      expect(statusline).toBeDefined();
-      expect(statusline).toContain("directory");
-      expect(statusline).toContain("main");
-      expect(statusline).toContain("Opus");
-      expect(statusline).toContain("Session");
-      expect(statusline).toContain("Today");
-      expect(statusline).toContain("$");
+      const result = await renderer.generateStatusline(createHookData());
+
+      expect(result).toContain("$0.05");
     });
 
-    it("should generate statusline with dark theme", async () => {
-      const statusline = await renderer.generateStatusline(
-        mockHookData,
-        "dark"
-      );
-
-      expect(statusline).toBeDefined();
-      expect(statusline).toContain("Opus");
-      expect(statusline).toContain("main");
-    });
-
-    it("should handle same current and project directory", async () => {
-      const statusline = await renderer.generateStatusline(
-        mockHookDataWithSameDir,
-        "colors"
-      );
-
-      expect(statusline).toBeDefined();
-      expect(statusline).toContain("myproject");
-      expect(statusline).toContain("Claude 3.5 Sonnet");
-    });
-
-    it("should handle missing git info gracefully", async () => {
-      const mockExecSync = require("node:child_process").execSync as jest.Mock;
-      mockExecSync.mockImplementation(() => {
-        throw new Error("Not a git repository");
+    it("shows tokens when type is tokens", async () => {
+      const config = createConfig({
+        session: { enabled: true, type: "tokens" },
       });
+      const renderer = new PowerlineRenderer(config);
 
-      const statusline = await renderer.generateStatusline(
-        mockHookDataNoGit,
-        "colors"
-      );
+      const result = await renderer.generateStatusline(createHookData());
 
-      expect(statusline).toBeDefined();
-      expect(statusline).toContain("Haiku");
-      expect(statusline).toContain("nogit");
-      expect(statusline).not.toContain("main");
-      mockExecSync.mockImplementation((cmd: string) => {
-        if (cmd.includes("git branch --show-current")) return "main\n";
-        if (cmd.includes("git status --porcelain")) return "";
-        if (cmd.includes("git rev-list --count")) return "0\n";
-        return "";
-      });
+      expect(result).toContain("1.6K tokens");
     });
 
-    it("should contain powerline separators", async () => {
-      const statusline = await renderer.generateStatusline(
-        mockHookData,
-        "colors"
-      );
+    it("shows both cost and tokens when type is both", async () => {
+      const config = createConfig({ session: { enabled: true, type: "both" } });
+      const renderer = new PowerlineRenderer(config);
 
-      expect(statusline).toContain("\uE0B0");
-    });
+      const result = await renderer.generateStatusline(createHookData());
 
-    it("should contain ANSI color codes", async () => {
-      const statusline = await renderer.generateStatusline(
-        mockHookData,
-        "colors"
-      );
-
-      expect(statusline).toContain("\x1b[");
-    });
-
-    it("should format costs correctly", async () => {
-      const statusline = await renderer.generateStatusline(
-        mockHookData,
-        "colors"
-      );
-
-      expect(statusline).toContain("$0.05");
-      expect(statusline).toContain("$1.25");
+      expect(result).toContain("$0.05");
+      expect(result).toContain("1.6K tokens");
     });
   });
 
-  describe("edge cases", () => {
-    it("should handle missing model display name", async () => {
-      const hookDataNoModel = {
-        ...mockHookData,
-        model: {} as any,
-      };
+  describe("budget warnings", () => {
+    it("shows warning indicator when over threshold", async () => {
+      const config = createConfig({ today: { enabled: true, type: "cost" } });
+      config.budget!.today!.amount = 1.5;
+      const renderer = new PowerlineRenderer(config);
 
-      const statusline = await renderer.generateStatusline(
-        hookDataNoModel,
-        "colors"
-      );
-      expect(statusline).toContain("Claude");
+      const result = await renderer.generateStatusline(createHookData());
+
+      expect(result).toContain("!");
     });
 
-    it("should handle missing workspace", async () => {
-      const hookDataNoWorkspace = {
-        ...mockHookData,
-        workspace: undefined as any,
-      };
+    it("does not show percentage when no budget amount set", async () => {
+      const config = createConfig({ today: { enabled: true, type: "cost" } });
+      config.budget!.today = { warningThreshold: 80 };
+      const renderer = new PowerlineRenderer(config);
 
-      const statusline = await renderer.generateStatusline(
-        hookDataNoWorkspace,
-        "colors"
-      );
-      expect(statusline).toBeDefined();
+      const result = await renderer.generateStatusline(createHookData());
+
+      expect(result).not.toContain("%");
+    });
+  });
+
+  describe("directory display", () => {
+    it("shows project name when in project root", async () => {
+      const config = createConfig({ directory: { enabled: true } });
+      const renderer = new PowerlineRenderer(config);
+
+      const result = await renderer.generateStatusline(createHookData());
+
+      expect(result).toContain("claude-powerline");
+    });
+  });
+
+  describe("git integration", () => {
+    it("shows branch name when git is available", async () => {
+      const config = createConfig({ git: { enabled: true, showSha: false } });
+      const renderer = new PowerlineRenderer(config);
+
+      const result = await renderer.generateStatusline(createHookData());
+
+      expect(result).toContain("main");
+    });
+  });
+
+  describe("tmux integration", () => {
+    it("shows session name when inside tmux", async () => {
+      process.env.TMUX_PANE = "%1";
+
+      const config = createConfig({ tmux: { enabled: true } });
+      const renderer = new PowerlineRenderer(config);
+
+      const result = await renderer.generateStatusline(createHookData());
+
+      expect(result).toContain("mysession");
+
+      delete process.env.TMUX_PANE;
+    });
+  });
+
+  describe("block segment", () => {
+    it("shows cost rate by default", async () => {
+      const config = createConfig({ block: { enabled: true } });
+      const renderer = new PowerlineRenderer(config);
+
+      const result = await renderer.generateStatusline(createHookData());
+
+      expect(result).toContain("$2.50");
+      expect(result).toContain("/hr");
+    });
+
+    it("shows token rate when configured", async () => {
+      const config = createConfig({ block: { enabled: true, type: "tokens" } });
+      const renderer = new PowerlineRenderer(config);
+
+      const result = await renderer.generateStatusline(createHookData());
+
+      expect(result).toContain("tokens");
+      expect(result).toContain("/hr");
     });
   });
 });

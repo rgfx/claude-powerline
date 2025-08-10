@@ -1,6 +1,6 @@
 # Claude Powerline
 
-A beautiful vim-style powerline statusline for Claude Code with real-time cost tracking, git integration, and custom themes.
+A vim-style powerline statusline for Claude Code with real-time usage tracking, git integration, and custom themes.
 
 ![Language:TypeScript](https://img.shields.io/static/v1?label=Language&message=TypeScript&color=blue&style=flat-square)
 ![License:MIT](https://img.shields.io/static/v1?label=License&message=MIT&color=blue&style=flat-square)
@@ -8,62 +8,19 @@ A beautiful vim-style powerline statusline for Claude Code with real-time cost t
 
 ## Features
 
-- **Vim-style powerline** - Beautiful segmented statusline with proper powerline arrows
-- **Real-time cost tracking** - Session and daily usage costs using [ccusage](https://github.com/ryanschneider/ccusage)
-- **Git integration** - Branch name, status indicators, ahead/behind counts
-- **Dual themes** - Light and dark color schemes optimized for different terminals
-- **Smart directory display** - Project-aware path showing with context
-- **Zero configuration** - Works out of the box with Claude Code hooks
-- **Font management** - Built-in powerline fonts installer
-
-## Screenshots
-
-### Default Theme
-
-![Default colorful theme](images/powerline-default.png)
-
-### Dark Theme
-
-![Dark theme](images/powerline-dark.png)
+- **Vim-style powerline** with proper arrows and segments
+- **Real-time usage tracking** with costs, tokens, and session blocks
+- **Git integration** with branch, status, ahead/behind counts
+- **Custom themes** with full color control
+- **Budget monitoring** with percentage warnings
+- **Flexible configuration** via JSON files and environment variables
 
 ## Installation
 
-### npm (Recommended)
-
 ```bash
 npm install -g @owloops/claude-powerline
+claude-powerline --install-fonts  # Install powerline fonts
 ```
-
-### Install powerline fonts
-
-For proper arrow display, install powerline fonts:
-
-```bash
-claude-powerline --install-fonts
-```
-
-After installation, set your terminal font to any powerline-patched font. Popular choices include:
-
-- Source Code Pro Powerline
-- DejaVu Sans Mono Powerline  
-- Ubuntu Mono Powerline
-- Fira Code Powerline
-- Hack Powerline
-- Or any other font with powerline symbols
-
-### From source
-
-```bash
-git clone https://github.com/Owloops/claude-powerline.git
-cd claude-powerline
-npm install
-npm run build
-npm install -g .
-```
-
-## Usage
-
-### Claude Code Integration
 
 Add to your Claude Code `settings.json`:
 
@@ -77,118 +34,167 @@ Add to your Claude Code `settings.json`:
 }
 ```
 
-### Command Line Options
+## Usage
 
 ```bash
-# Default colorful theme
+# Basic usage (single line with directory, git, model, session, block)
 claude-powerline
 
-# Dark theme for dark terminals
-claude-powerline --dark
+# Dark theme
+claude-powerline --theme=dark
 
-# Install powerline fonts
-claude-powerline --install-fonts
+# Show tokens instead of costs  
+claude-powerline --usage=tokens
 
-# Show help
-claude-powerline --help
+# Show token breakdown (input/output)
+claude-powerline --usage=breakdown
+
+# Set budgets with warnings
+claude-powerline --daily-budget=50 --session-budget=20
 ```
 
-### Manual Testing
+## Screenshots
 
-```bash
-echo '{
-  "model": {"id": "claude-sonnet", "display_name": "Claude 3.5 Sonnet"}, 
-  "workspace": {"current_dir": "/path/to/project", "project_dir": "/path/to/project"},
-  "session_id": "abc123",
-  "cwd": "/path/to/project",
-  "transcript_path": "/path/to/transcript.json",
-  "hook_event_name": "Status"
-}' | claude-powerline
-```
+### Dark Theme (Default)
 
-## Statusline Segments
+![Dark Theme](images/powerline-dark.png)
 
-The statusline displays information in colored segments from left to right:
+### Light Theme
 
-| Segment | Description | Example |
-|---------|-------------|---------|
-| **Directory** | Current working directory or project name | `myproject` |
-| **Git Branch** | Branch with status and ahead/behind | `master ✓ ↑2` |  
-| **Model** | Current Claude model | `Claude 3.5 Sonnet` |
-| **Session** | Current session usage cost | `Session $0.05` |
-| **Daily** | Total daily usage cost | `Today $14.82` |
+![Light theme](images/powerline-light.png)
+
+## Default Segments
+
+By default displays: `Directory | Git Branch | Model | Session Usage | Block Info`
+
+### Usage Display Types
+
+- **cost**: Show dollar amounts (`$0.05`)
+- **tokens**: Show token counts (`1.2K tokens`)
+- **both**: Show both (`$0.05 (1.2K tokens)`)
+- **breakdown**: Show detailed token breakdown (`1.2Kin + 0.8Kout + 1.5Kcached`)
 
 ### Git Status Indicators
 
-- `✓` **Clean** - No uncommitted changes
-- `●` **Dirty** - Uncommitted changes present
-- `⚠` **Conflicts** - Merge conflicts detected
-- `↑3` **Ahead** - 3 commits ahead of remote
-- `↓2` **Behind** - 2 commits behind remote
+- `✓` Clean, `●` Dirty, `⚠` Conflicts
+- `↑3` Ahead, `↓2` Behind remote
 
-### Cost Information
+### Budget Indicators
 
-Powered by [ccusage](https://github.com/ryanschneider/ccusage) integration:
+- `25%` Normal (under 50%)
+- `+75%` Moderate (50-79%)  
+- `!85%` Warning (80%+, configurable)
 
-- Shows current session and daily totals
-- Displays `N/A` if session not found
-- Shows `<$0.01` for small amounts
+## Configuration
 
-## Themes
+Generate config template:
 
-**Colors Theme (Default):**
+```bash
+claude-powerline --print-default-config > ~/.claude/claude-powerline.json
+```
 
-- Vibrant segments: orange → blue → purple → pink → green
-- High contrast for light terminals
+Config files loaded in priority order:
 
-**Dark Theme (`--dark`):**
+1. CLI arguments (`--theme`, `--usage`, `--config`)
+2. Environment variables (`CLAUDE_POWERLINE_THEME`, `CLAUDE_POWERLINE_USAGE_TYPE`, `CLAUDE_POWERLINE_CONFIG`)
+3. `./.claude-powerline.json` (project)
+4. `~/.claude/claude-powerline.json` (user)  
+5. `~/.config/claude-powerline/config.json` (XDG)
 
-- Subdued segments: brown → gray → dark purple → charcoal
-- Optimized for dark terminals
+### Enable Additional Segments
+
+```json
+{
+  "display": {
+    "lines": [
+      {
+        "segments": {
+          "directory": { "enabled": true },
+          "git": { "enabled": true, "showSha": true },
+          "model": { "enabled": true },
+          "session": { "enabled": true, "type": "tokens" },
+          "today": { "enabled": true, "type": "tokens" },
+          "block": { "enabled": true, "type": "cost" },
+          "tmux": { "enabled": true }
+        }
+      }
+    ]
+  }
+}
+```
+
+### Multi-line Layout (Optional)
+
+To prevent segment cutoff, configure multiple lines:
+
+```json
+{
+  "display": {
+    "lines": [
+      {
+        "segments": {
+          "directory": { "enabled": true },
+          "git": { "enabled": true },
+          "model": { "enabled": true }
+        }
+      },
+      {
+        "segments": {
+          "session": { "enabled": true, "type": "tokens" },
+          "today": { "enabled": true, "type": "tokens" },
+          "block": { "enabled": true, "type": "cost" },
+          "tmux": { "enabled": true }
+        }
+      }
+    ]
+  }
+}
+```
+
+### Custom Theme
+
+```json
+{
+  "theme": "custom",
+  "colors": {
+    "custom": {
+      "directory": { "bg": "#ff6600", "fg": "#ffffff" },
+      "git": { "bg": "#0066cc", "fg": "#ffffff" },
+      "model": { "bg": "#9900cc", "fg": "#ffffff" },
+      "session": { "bg": "#cc0099", "fg": "#ffffff" },
+      "today": { "bg": "#00cc66", "fg": "#000000" },
+      "block": { "bg": "#cc6600", "fg": "#ffffff" },
+      "tmux": { "bg": "#228b22", "fg": "#ffffff" }
+    }
+  },
+  "budget": {
+    "session": { "warningThreshold": 80 },
+    "today": { "amount": 50, "warningThreshold": 80 }
+  }
+}
+```
+
+## Environment Variables
+
+```bash
+export CLAUDE_POWERLINE_THEME=dark
+export CLAUDE_POWERLINE_USAGE_TYPE=tokens
+export CLAUDE_POWERLINE_CONFIG=/path/to/config.json
+```
 
 ## Requirements
 
 - Node.js ≥ 18.0.0
-- Claude Code with statusline hook support
-- Terminal with powerline font support (use `--install-fonts`)
+- Terminal with powerline font support
 - Git (optional, for git integration)
-
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Build TypeScript
-npm run build
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-
-# Development mode with file watching
-npm run dev
-```
 
 ## Troubleshooting
 
-**Arrows not displaying?**
+**Arrows not displaying?** Run `claude-powerline --install-fonts` and set terminal font to a powerline-patched font.
 
-1. Run `claude-powerline --install-fonts`
-2. Restart terminal and set font to a powerline font
-3. Ensure terminal supports Unicode
+**Cost showing N/A?** Verify [ccusage](https://github.com/ryanschneider/ccusage) is working and session ID matches.
 
-**Cost showing N/A?**
-
-1. Verify [ccusage](https://github.com/ryanschneider/ccusage) can access Claude data
-2. Check session ID matches current Claude session
-
-**Git info missing?**
-
-1. Ensure you're in a git repository
-2. Check git is installed and in PATH
+**Tmux segment not showing?** Ensure you're in a tmux session and enable it in config.
 
 ## Contributing
 

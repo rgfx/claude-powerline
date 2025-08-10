@@ -17,12 +17,16 @@ export interface PowerlineColors {
   reset: string;
   modeBg: string;
   modeFg: string;
+  gitBg: string;
+  gitFg: string;
   sessionBg: string;
   sessionFg: string;
-  dailyBg: string;
-  dailyFg: string;
+  todayBg: string;
+  todayFg: string;
   blockBg: string;
   blockFg: string;
   burnLowBg: string;
   burnFg: string;
+  tmuxBg: string;
+  tmuxFg: string;
 }

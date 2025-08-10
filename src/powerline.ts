@@ -1,62 +1,143 @@
-import type { ClaudeHookData, PowerlineColors } from "./types.ts";
-import { execSync } from "node:child_process";
-import {
-  loadSessionUsageById,
-  loadDailyUsageData,
-  getClaudePaths,
-} from "ccusage/data-loader";
-import { calculateTotals } from "ccusage/calculate-cost";
-import { logger } from "ccusage/logger";
-
-type PowerlineStyle = "colors" | "dark";
-
-interface PowerlineSymbols {
-  right: string;
-  branch: string;
-  model: string;
-  git_clean: string;
-  git_dirty: string;
-  git_conflicts: string;
-  git_ahead: string;
-  git_behind: string;
-  session_cost: string;
-  daily_cost: string;
-}
+import type { ClaudeHookData, PowerlineColors } from "./types";
+import type { PowerlineConfig, LineConfig } from "./types/config";
+import { hexToAnsi, extractBgToFg } from "./lib/colors";
+import { UsageProvider } from "./lib/usage-provider";
+import { GitService } from "./lib/git-service";
+import { TmuxService } from "./lib/tmux-service";
+import { SegmentRenderer, PowerlineSymbols } from "./lib/segment-renderer";
 
 export class PowerlineRenderer {
   private readonly symbols: PowerlineSymbols;
-  private readonly colors: Record<PowerlineStyle, PowerlineColors>;
+  private readonly usageProvider: UsageProvider;
+  private readonly gitService: GitService;
+  private readonly tmuxService: TmuxService;
+  private readonly segmentRenderer: SegmentRenderer;
 
-  constructor() {
+  constructor(private readonly config: PowerlineConfig) {
     this.symbols = this.initializeSymbols();
-    this.colors = {
-      colors: {
-        reset: "\x1b[0m",
-        modeBg: "\x1b[48;2;255;107;71m",
-        modeFg: "\x1b[97m",
-        sessionBg: "\x1b[48;2;79;179;217m",
-        sessionFg: "\x1b[97m",
-        dailyBg: "\x1b[48;2;135;206;235m",
-        dailyFg: "\x1b[30m",
-        blockBg: "\x1b[48;2;218;112;214m",
-        blockFg: "\x1b[97m",
-        burnLowBg: "\x1b[48;2;144;238;144m",
-        burnFg: "\x1b[97m",
-      },
-      dark: {
-        reset: "\x1b[0m",
-        modeBg: "\x1b[48;2;139;69;19m",
-        modeFg: "\x1b[97m",
-        sessionBg: "\x1b[48;2;64;64;64m",
-        sessionFg: "\x1b[97m",
-        dailyBg: "\x1b[48;2;45;45;45m",
-        dailyFg: "\x1b[97m",
-        blockBg: "\x1b[48;2;32;32;32m",
-        blockFg: "\x1b[96m",
-        burnLowBg: "\x1b[48;2;28;28;28m",
-        burnFg: "\x1b[97m",
-      },
-    };
+    this.usageProvider = new UsageProvider();
+    this.gitService = new GitService();
+    this.tmuxService = new TmuxService();
+    this.segmentRenderer = new SegmentRenderer(config, this.symbols);
+  }
+
+  async generateStatusline(hookData: ClaudeHookData): Promise<string> {
+    const usageInfo = await this.usageProvider.getUsageInfo(
+      hookData.session_id
+    );
+
+    let sessionBlockInfo = null;
+    if (this.needsSessionBlock()) {
+      sessionBlockInfo = await this.usageProvider.getSessionBlockInfo();
+    }
+
+    const lines = this.config.display.lines
+      .map((lineConfig) =>
+        this.renderLine(lineConfig, hookData, usageInfo, sessionBlockInfo)
+      )
+      .filter((line) => line.length > 0);
+
+    return lines.join("\n");
+  }
+
+  private needsSessionBlock(): boolean {
+    return this.config.display.lines.some(
+      (line) => line.segments.block?.enabled
+    );
+  }
+
+  private renderLine(
+    lineConfig: LineConfig,
+    hookData: ClaudeHookData,
+    usageInfo: any,
+    sessionBlockInfo: any
+  ): string {
+    const colors = this.getThemeColors();
+    const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
+
+    const segments = Object.entries(lineConfig.segments)
+      .filter(([_, config]: [string, any]) => config?.enabled)
+      .map(([type, config]: [string, any]) => ({ type, config }));
+
+    let line = "";
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      if (!segment) continue;
+
+      const isLast = i === segments.length - 1;
+      const nextSegment = !isLast ? segments[i + 1] : null;
+      const nextBgColor = nextSegment
+        ? this.getSegmentBgColor(nextSegment.type, colors)
+        : "";
+
+      const segmentData = this.renderSegment(
+        segment,
+        hookData,
+        usageInfo,
+        sessionBlockInfo,
+        colors,
+        currentDir
+      );
+
+      if (segmentData) {
+        line += this.formatSegment(
+          segmentData.bgColor,
+          segmentData.fgColor,
+          segmentData.text,
+          isLast ? undefined : nextBgColor
+        );
+      }
+    }
+
+    return line;
+  }
+
+  private renderSegment(
+    segment: any,
+    hookData: ClaudeHookData,
+    usageInfo: any,
+    sessionBlockInfo: any,
+    colors: any,
+    currentDir: string
+  ) {
+    switch (segment.type) {
+      case "directory":
+        return this.segmentRenderer.renderDirectory(hookData, colors);
+
+      case "git":
+        const showSha = segment.config?.showSha || false;
+        const gitInfo = this.gitService.getGitInfo(currentDir, showSha);
+        return gitInfo
+          ? this.segmentRenderer.renderGit(gitInfo, colors, showSha)
+          : null;
+
+      case "model":
+        return this.segmentRenderer.renderModel(hookData, colors);
+
+      case "session":
+        const usageType = segment.config?.type || "cost";
+        return this.segmentRenderer.renderSession(usageInfo, colors, usageType);
+
+      case "today":
+        const todayType = segment.config?.type || "cost";
+        return this.segmentRenderer.renderToday(usageInfo, colors, todayType);
+
+      case "block":
+        const blockType = segment.config?.type || "cost";
+        return this.segmentRenderer.renderBlock(
+          sessionBlockInfo,
+          colors,
+          blockType
+        );
+
+      case "tmux":
+        const tmuxSessionId = this.tmuxService.getSessionId();
+        return this.segmentRenderer.renderTmux(tmuxSessionId, colors);
+
+      default:
+        return null;
+    }
   }
 
   private initializeSymbols(): PowerlineSymbols {
@@ -71,18 +152,62 @@ export class PowerlineRenderer {
       git_behind: "↓",
       session_cost: "Session",
       daily_cost: "Today",
+      block_cost: "Block",
     };
   }
 
-  private extractBgColor(ansiCode: string): string {
-    const match = ansiCode.match(/48;2;(\d+);(\d+);(\d+)/);
-    if (match) {
-      return `\x1b[38;2;${match[1]};${match[2]};${match[3]}m`;
+  private getThemeColors(): PowerlineColors {
+    const theme = this.config.theme;
+    const colorTheme = this.config.colors[theme];
+
+    if (!colorTheme) {
+      throw new Error(`Theme '${theme}' not found in configuration`);
     }
-    return ansiCode.replace("48", "38");
+
+    return {
+      reset: "\x1b[0m",
+      modeBg: hexToAnsi(colorTheme.directory.bg, true),
+      modeFg: hexToAnsi(colorTheme.directory.fg, false),
+      gitBg: hexToAnsi(colorTheme.git.bg, true),
+      gitFg: hexToAnsi(colorTheme.git.fg, false),
+      sessionBg: hexToAnsi(colorTheme.session.bg, true),
+      sessionFg: hexToAnsi(colorTheme.session.fg, false),
+      todayBg: hexToAnsi(colorTheme.today.bg, true),
+      todayFg: hexToAnsi(colorTheme.today.fg, false),
+      blockBg: hexToAnsi(colorTheme.block.bg, true),
+      blockFg: hexToAnsi(colorTheme.block.fg, false),
+      burnLowBg: hexToAnsi(colorTheme.today.bg, true),
+      burnFg: hexToAnsi(colorTheme.today.fg, false),
+      tmuxBg: hexToAnsi(colorTheme.tmux.bg, true),
+      tmuxFg: hexToAnsi(colorTheme.tmux.fg, false),
+    };
   }
 
-  private renderSegment(
+  private getSegmentBgColor(
+    segmentType: string,
+    colors: PowerlineColors
+  ): string {
+    switch (segmentType) {
+      case "directory":
+        return colors.modeBg;
+      case "git":
+        return colors.gitBg;
+      case "model":
+        return colors.todayBg;
+      case "session":
+        return colors.sessionBg;
+      case "today":
+        return colors.burnLowBg;
+      case "block":
+        return colors.blockBg;
+      case "tmux":
+        return colors.tmuxBg;
+      default:
+        return colors.modeBg;
+    }
+  }
+
+  private formatSegment(
     bgColor: string,
     fgColor: string,
     text: string,
@@ -91,215 +216,13 @@ export class PowerlineRenderer {
     let output = `${bgColor}${fgColor} ${text} `;
 
     if (nextBgColor) {
-      const arrowFgColor = this.extractBgColor(bgColor);
+      const arrowFgColor = extractBgToFg(bgColor);
       output += `${nextBgColor}${arrowFgColor}${this.symbols.right}`;
     } else {
-      const arrowFgColor = this.extractBgColor(bgColor);
-      output += `${this.colors.colors.reset}${arrowFgColor}${this.symbols.right}${this.colors.colors.reset}`;
+      const arrowFgColor = extractBgToFg(bgColor);
+      output += `\x1b[0m${arrowFgColor}${this.symbols.right}\x1b[0m`;
     }
 
     return output;
-  }
-
-  private sanitizePath(path: string): string {
-    return path.replace(/[;&|`$(){}[\]<>'"\\]/g, "");
-  }
-
-  private getGitInfo(
-    workingDir: string
-  ): { branch: string; status: string; ahead: number; behind: number } | null {
-    try {
-      const sanitizedDir = this.sanitizePath(workingDir);
-
-      const branch = execSync("git branch --show-current 2>/dev/null", {
-        cwd: sanitizedDir,
-        encoding: "utf8",
-        timeout: 1000,
-      }).trim();
-
-      const gitStatus = execSync("git status --porcelain 2>/dev/null", {
-        cwd: sanitizedDir,
-        encoding: "utf8",
-        timeout: 1000,
-      }).trim();
-
-      let status = "clean";
-      if (gitStatus) {
-        if (
-          gitStatus.includes("UU") ||
-          gitStatus.includes("AA") ||
-          gitStatus.includes("DD")
-        ) {
-          status = "conflicts";
-        } else {
-          status = "dirty";
-        }
-      }
-
-      let ahead = 0,
-        behind = 0;
-      try {
-        const aheadResult = execSync(
-          "git rev-list --count @{u}..HEAD 2>/dev/null",
-          {
-            cwd: sanitizedDir,
-            encoding: "utf8",
-            timeout: 1000,
-          }
-        ).trim();
-        ahead = parseInt(aheadResult) || 0;
-
-        const behindResult = execSync(
-          "git rev-list --count HEAD..@{u} 2>/dev/null",
-          {
-            cwd: sanitizedDir,
-            encoding: "utf8",
-            timeout: 1000,
-          }
-        ).trim();
-        behind = parseInt(behindResult) || 0;
-      } catch {}
-
-      return { branch: branch || "detached", status, ahead, behind };
-    } catch {
-      return null;
-    }
-  }
-
-  private async getCostInfo(
-    sessionId: string
-  ): Promise<{ sessionCost: number | null; dailyCost: number }> {
-    const originalLevel = logger.level;
-    logger.level = 0;
-
-    try {
-      const claudePaths = getClaudePaths();
-      if (claudePaths.length === 0) {
-        logger.level = originalLevel;
-        return { sessionCost: null, dailyCost: 0 };
-      }
-
-      let sessionCost: number | null = null;
-      try {
-        const sessionData = await loadSessionUsageById(sessionId, {
-          mode: "auto",
-        });
-        if (sessionData != null) {
-          sessionCost = sessionData.totalCost;
-        }
-      } catch {}
-
-      let dailyCost = 0;
-      try {
-        const today = new Date();
-        const todayStr =
-          today.toISOString().split("T")[0]?.replace(/-/g, "") ?? "";
-
-        const dailyData = await loadDailyUsageData({
-          since: todayStr,
-          until: todayStr,
-          mode: "auto",
-        });
-
-        if (dailyData.length > 0) {
-          const totals = calculateTotals(dailyData);
-          dailyCost = totals.totalCost;
-        }
-      } catch {}
-
-      logger.level = originalLevel;
-      return { sessionCost, dailyCost };
-    } catch {
-      logger.level = originalLevel;
-      return { sessionCost: null, dailyCost: 0 };
-    }
-  }
-
-  private formatCost(cost: number | null): string {
-    if (cost === null) return "N/A";
-    if (cost < 0.01) return "<$0.01";
-    return `$${cost.toFixed(2)}`;
-  }
-
-  async generateStatusline(
-    hookData: ClaudeHookData,
-    style: PowerlineStyle = "colors"
-  ): Promise<string> {
-    const modelName = hookData.model?.display_name || "Claude";
-    const currentDir = hookData.workspace?.current_dir || hookData.cwd || "/";
-    const projectDir = hookData.workspace?.project_dir;
-
-    let dirName: string;
-    if (projectDir && projectDir !== currentDir) {
-      const projectName = projectDir.split("/").pop() || "project";
-      const currentDirName = currentDir.split("/").pop() || "root";
-      dirName = currentDir.includes(projectDir)
-        ? `${projectName}/${currentDirName}`
-        : currentDirName;
-    } else {
-      dirName = currentDir.split("/").pop() || "root";
-    }
-    const gitInfo = this.getGitInfo(currentDir);
-    const sessionId = hookData.session_id;
-    const costInfo = await this.getCostInfo(sessionId);
-
-    const colors = this.colors[style];
-
-    let statusline = "";
-
-    statusline += this.renderSegment(
-      colors.modeBg,
-      colors.modeFg,
-      dirName,
-      gitInfo ? colors.sessionBg : colors.dailyBg
-    );
-
-    if (gitInfo) {
-      let gitStatusIcon = this.symbols.git_clean;
-      if (gitInfo.status === "conflicts") {
-        gitStatusIcon = this.symbols.git_conflicts;
-      } else if (gitInfo.status === "dirty") {
-        gitStatusIcon = this.symbols.git_dirty;
-      }
-
-      let branchText = `${this.symbols.branch} ${gitInfo.branch} ${gitStatusIcon}`;
-
-      if (gitInfo.ahead > 0 && gitInfo.behind > 0) {
-        branchText += ` ${this.symbols.git_ahead}${gitInfo.ahead}${this.symbols.git_behind}${gitInfo.behind}`;
-      } else if (gitInfo.ahead > 0) {
-        branchText += ` ${this.symbols.git_ahead}${gitInfo.ahead}`;
-      } else if (gitInfo.behind > 0) {
-        branchText += ` ${this.symbols.git_behind}${gitInfo.behind}`;
-      }
-
-      statusline += this.renderSegment(
-        colors.sessionBg,
-        colors.sessionFg,
-        branchText,
-        colors.dailyBg
-      );
-    }
-
-    statusline += this.renderSegment(
-      colors.dailyBg,
-      colors.dailyFg,
-      `${this.symbols.model} ${modelName}`,
-      colors.blockBg
-    );
-
-    statusline += this.renderSegment(
-      colors.blockBg,
-      colors.blockFg,
-      `${this.symbols.session_cost} ${this.formatCost(costInfo.sessionCost)}`,
-      colors.burnLowBg
-    );
-
-    statusline += this.renderSegment(
-      colors.burnLowBg,
-      colors.burnFg,
-      `${this.symbols.daily_cost} ${this.formatCost(costInfo.dailyCost)}`
-    );
-
-    return statusline;
   }
 }

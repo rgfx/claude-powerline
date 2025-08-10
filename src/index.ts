@@ -6,8 +6,9 @@ import fs from "node:fs";
 import { execSync } from "node:child_process";
 import os from "node:os";
 import getStdin from "get-stdin";
-import { PowerlineRenderer } from "./powerline.ts";
-import type { ClaudeHookData } from "./types.ts";
+import { PowerlineRenderer } from "./powerline";
+import { loadConfigFromCLI, getDefaultConfigJSON } from "./config/loader";
+import type { ClaudeHookData } from "./types";
 
 async function installFonts(): Promise<void> {
   try {
@@ -92,13 +93,18 @@ async function installFonts(): Promise<void> {
 
 async function main(): Promise<void> {
   try {
-    const style = process.argv.includes("--dark") ? "dark" : "colors";
     const showHelp =
       process.argv.includes("--help") || process.argv.includes("-h");
     const installFontsFlag = process.argv.includes("--install-fonts");
+    const printDefaultConfig = process.argv.includes("--print-default-config");
 
     if (installFontsFlag) {
       await installFonts();
+      process.exit(0);
+    }
+
+    if (printDefaultConfig) {
+      console.log(getDefaultConfigJSON());
       process.exit(0);
     }
 
@@ -109,9 +115,26 @@ claude-powerline - Beautiful powerline statusline for Claude Code
 Usage: claude-powerline [options]
 
 Options:
-  --dark              Use dark color scheme
-  --install-fonts     Install powerline fonts to system
-  -h, --help          Show this help
+  --theme=THEME            Set theme: light, dark, custom
+  --usage=TYPE             Usage display: cost, tokens, both, breakdown
+  --session-budget=AMOUNT  Set session budget for percentage tracking
+  --daily-budget=AMOUNT    Set daily budget for percentage tracking
+  --config=PATH            Use custom config file path
+  --install-fonts          Install powerline fonts to system
+  --print-default-config   Print default configuration template
+  -h, --help               Show this help
+
+Configuration:
+  Config files are loaded in this order (highest priority first):
+  1. CLI arguments (--theme, --usage, --config)
+  2. Environment variables (CLAUDE_POWERLINE_THEME, CLAUDE_POWERLINE_USAGE_TYPE, CLAUDE_POWERLINE_CONFIG)
+  3. ./.claude-powerline.json (project)
+  4. ~/.claude/claude-powerline.json (user)
+  5. ~/.config/claude-powerline/config.json (XDG)
+
+Creating a config file:
+  claude-powerline --print-default-config > ~/.claude/claude-powerline.json
+  claude-powerline --print-default-config > .claude-powerline.json
 
 Usage in Claude Code settings.json:
 {
@@ -134,18 +157,16 @@ claude-powerline - Beautiful powerline statusline for Claude Code
 Usage: claude-powerline [options]
 
 Options:
-  --dark              Use dark color scheme
-  --install-fonts     Install powerline fonts to system
-  -h, --help          Show this help
+  --theme=THEME            Set theme: light, dark, custom
+  --usage=TYPE             Usage display: cost, tokens, both, breakdown
+  --session-budget=AMOUNT  Set session budget for percentage tracking
+  --daily-budget=AMOUNT    Set daily budget for percentage tracking
+  --config=PATH            Use custom config file path
+  --install-fonts          Install powerline fonts to system
+  --print-default-config   Print default configuration template
+  -h, --help               Show this help
 
-Usage in Claude Code settings.json:
-{
-  "statusLine": {
-    "type": "command",
-    "command": "claude-powerline",
-    "padding": 0
-  }
-}
+Run 'claude-powerline --print-default-config' to see configuration options.
 `);
       process.exit(1);
     }
@@ -161,8 +182,9 @@ Usage in Claude Code settings.json:
       process.exit(1);
     }
 
-    const renderer = new PowerlineRenderer();
-    const statusline = await renderer.generateStatusline(hookData, style);
+    const config = loadConfigFromCLI();
+    const renderer = new PowerlineRenderer(config);
+    const statusline = await renderer.generateStatusline(hookData);
 
     console.log(statusline);
   } catch (error) {
