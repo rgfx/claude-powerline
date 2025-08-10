@@ -22,9 +22,9 @@ describe("config", () => {
 
   describe("DEFAULT_CONFIG", () => {
     it("should have valid structure", () => {
-      expect(DEFAULT_CONFIG.theme).toBe("light");
+      expect(DEFAULT_CONFIG.theme).toBe("dark");
       expect(DEFAULT_CONFIG.display.lines).toHaveLength(1);
-      expect(DEFAULT_CONFIG.colors.light).toBeDefined();
+      expect(DEFAULT_CONFIG.colors.dark).toBeDefined();
       expect(DEFAULT_CONFIG.budget?.today).toBeDefined();
     });
   });
