@@ -1,7 +1,7 @@
 {
-  "name": "claude-powerline",
-  "version": "1.0.0",
-  "description": "A Node.js/TypeScript statusline for Claude Code that mimics vim's powerline style",
+  "name": "@owloops/claude-powerline",
+  "version": "0.1.0",
+  "description": "Beautiful vim-style powerline statusline for Claude Code with real-time cost tracking, git integration, and custom themes",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -10,14 +10,33 @@
     "claude-powerline": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "prepublishOnly": "npm run lint && npm run build"
   },
-  "keywords": ["claude", "powerline", "statusline", "typescript", "claude-code"],
-  "author": "",
+  "keywords": [
+    "claude",
+    "powerline",
+    "statusline",
+    "typescript",
+    "claude-code"
+  ],
+  "author": "Owloops",
   "license": "MIT",
+  "homepage": "https://github.com/Owloops/claude-powerline#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Owloops/claude-powerline.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Owloops/claude-powerline/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
@@ -26,11 +45,30 @@
     "README.md",
     "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "dependencies": {
+    "ccusage": "^15.9.1",
     "get-stdin": "^9.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "jest": "^30.0.5",
+    "prettier": "^3.6.2",
+    "semantic-release": "^24.2.7",
+    "ts-jest": "^29.4.1",
+    "tsup": "^8.5.0",
     "typescript": "^5.0.0"
   }
 }
