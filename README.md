@@ -4,7 +4,7 @@ A beautiful vim-style powerline statusline for Claude Code with real-time cost t
 
 ![Language:TypeScript](https://img.shields.io/static/v1?label=Language&message=TypeScript&color=blue&style=flat-square)
 ![License:MIT](https://img.shields.io/static/v1?label=License&message=MIT&color=blue&style=flat-square)
-[![npm version](https://img.shields.io/npm/v/claude-powerline?style=flat-square)](https://www.npmjs.com/package/claude-powerline)
+[![npm version](https://img.shields.io/npm/v/@owloops/claude-powerline?style=flat-square)](https://www.npmjs.com/package/@owloops/claude-powerline)
 
 ## Features
 
@@ -31,7 +31,7 @@ A beautiful vim-style powerline statusline for Claude Code with real-time cost t
 ### npm (Recommended)
 
 ```bash
-npm install -g claude-powerline
+npm install -g @owloops/claude-powerline
 ```
 
 ### Install powerline fonts
@@ -42,16 +42,19 @@ For proper arrow display, install powerline fonts:
 claude-powerline --install-fonts
 ```
 
-After installation, set your terminal font to:
+After installation, set your terminal font to any powerline-patched font. Popular choices include:
 
 - Source Code Pro Powerline
 - DejaVu Sans Mono Powerline  
 - Ubuntu Mono Powerline
+- Fira Code Powerline
+- Hack Powerline
+- Or any other font with powerline symbols
 
 ### From source
 
 ```bash
-git clone https://github.com/user/claude-powerline.git
+git clone https://github.com/Owloops/claude-powerline.git
 cd claude-powerline
 npm install
 npm run build
