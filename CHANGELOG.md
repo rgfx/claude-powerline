@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/Owloops/claude-powerline/compare/v1.0.0...v1.0.1) (2025-08-10)
+
+
+### Bug Fixes
+
+* update package references and expand font options ([d019e8e](https://github.com/Owloops/claude-powerline/commit/d019e8e1be60a5c84d47eccf3eb65d6a94483f2f))
+
 # 1.0.0 (2025-08-10)
 
 
