@@ -16,6 +16,16 @@ A beautiful vim-style powerline statusline for Claude Code with real-time cost t
 - **Zero configuration** - Works out of the box with Claude Code hooks
 - **Font management** - Built-in powerline fonts installer
 
+## Screenshots
+
+### Default Theme
+
+![Default colorful theme](images/powerline-default.png)
+
+### Dark Theme
+
+![Dark theme](images/powerline-dark.png)
+
 ## Installation
 
 ### npm (Recommended)
@@ -120,16 +130,6 @@ Powered by [ccusage](https://github.com/ryanschneider/ccusage) integration:
 - Shows current session and daily totals
 - Displays `N/A` if session not found
 - Shows `<$0.01` for small amounts
-
-## Screenshots
-
-### Default Theme
-
-![Default colorful theme](images/powerline-default.png)
-
-### Dark Theme
-
-![Dark theme](images/powerline-dark.png)
 
 ## Themes
 
