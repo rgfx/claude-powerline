@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/Owloops/claude-powerline/compare/v1.1.0...v1.1.1) (2025-08-11)
+
+
+### Bug Fixes
+
+* use today segment by default instead of block segment for immediate data display ([c55d7e5](https://github.com/Owloops/claude-powerline/commit/c55d7e5945e180c00d16a26d077d9c8c79d962f9))
+
 # [1.1.0](https://github.com/Owloops/claude-powerline/compare/v1.0.1...v1.1.0) (2025-08-10)
 
 
