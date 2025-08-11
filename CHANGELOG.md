@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/Owloops/claude-powerline/compare/v1.1.1...v1.1.2) (2025-08-11)
+
+
+### Bug Fixes
+
+* correct model segment color mapping and improve today segment visibility ([c573e9e](https://github.com/Owloops/claude-powerline/commit/c573e9ef453b54a51ec95a683c2780bf459aebaa))
+
 ## [1.1.1](https://github.com/Owloops/claude-powerline/compare/v1.1.0...v1.1.1) (2025-08-11)
 
 
