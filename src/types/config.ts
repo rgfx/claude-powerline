@@ -72,4 +72,5 @@ export interface ConfigLoadOptions {
   configPath?: string;
   ignoreEnvVars?: boolean;
   cliOverrides?: Partial<PowerlineConfig>;
+  projectDir?: string;
 }

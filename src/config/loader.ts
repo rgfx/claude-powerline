@@ -27,12 +27,16 @@ function deepMerge<T extends Record<string, any>>(
   return result;
 }
 
-function findConfigFile(customPath?: string): string | null {
+function findConfigFile(
+  customPath?: string,
+  projectDir?: string
+): string | null {
   if (customPath) {
     return fs.existsSync(customPath) ? customPath : null;
   }
 
   const locations = [
+    ...(projectDir ? [path.join(projectDir, ".claude-powerline.json")] : []),
     path.join(process.cwd(), ".claude-powerline.json"),
     path.join(os.homedir(), ".claude", "claude-powerline.json"),
     path.join(os.homedir(), ".config", "claude-powerline", "config.json"),
@@ -146,11 +150,16 @@ function parseCLIOverrides(args: string[]): Partial<PowerlineConfig> {
 }
 
 export function loadConfig(options: ConfigLoadOptions = {}): PowerlineConfig {
-  const { configPath, ignoreEnvVars = false, cliOverrides = {} } = options;
+  const {
+    configPath,
+    ignoreEnvVars = false,
+    cliOverrides = {},
+    projectDir,
+  } = options;
 
   let config: PowerlineConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
-  const configFile = findConfigFile(configPath);
+  const configFile = findConfigFile(configPath, projectDir);
   if (configFile) {
     try {
       const fileConfig = loadConfigFile(configFile);
@@ -173,7 +182,8 @@ export function loadConfig(options: ConfigLoadOptions = {}): PowerlineConfig {
 }
 
 export function loadConfigFromCLI(
-  args: string[] = process.argv
+  args: string[] = process.argv,
+  projectDir?: string
 ): PowerlineConfig {
   const configPathIndex = args.findIndex((arg) => arg.startsWith("--config="));
   const configPath =
@@ -183,11 +193,14 @@ export function loadConfigFromCLI(
 
   const cliOverrides = parseCLIOverrides(args);
 
-  return loadConfig({ configPath, cliOverrides });
+  return loadConfig({ configPath, cliOverrides, projectDir });
 }
 
-export function getConfigPath(customPath?: string): string | null {
-  return findConfigFile(customPath);
+export function getConfigPath(
+  customPath?: string,
+  projectDir?: string
+): string | null {
+  return findConfigFile(customPath, projectDir);
 }
 
 export function getDefaultConfigJSON(): string {

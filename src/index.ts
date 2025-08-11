@@ -182,7 +182,8 @@ Run 'claude-powerline --print-default-config' to see configuration options.
       process.exit(1);
     }
 
-    const config = loadConfigFromCLI();
+    const projectDir = hookData.workspace?.project_dir;
+    const config = loadConfigFromCLI(process.argv, projectDir);
     const renderer = new PowerlineRenderer(config);
     const statusline = await renderer.generateStatusline(hookData);
 

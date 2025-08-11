@@ -19,11 +19,11 @@
             "type": "tokens"
           },
           "today": {
-            "enabled": false,
-            "type": "tokens"
+            "enabled": true,
+            "type": "both"
           },
           "block": {
-            "enabled": true,
+            "enabled": false,
             "type": "cost"
           },
           "tmux": {

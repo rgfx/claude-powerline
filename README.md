@@ -37,7 +37,7 @@ Add to your Claude Code `settings.json`:
 ## Usage
 
 ```bash
-# Basic usage (single line with directory, git, model, session, block)
+# Basic usage (single line with directory, git, model, session, today)
 claude-powerline
 
 # Dark theme
@@ -65,7 +65,7 @@ claude-powerline --daily-budget=50 --session-budget=20
 
 ## Default Segments
 
-By default displays: `Directory | Git Branch | Model | Session Usage | Block Info`
+By default displays: `Directory | Git Branch | Model | Session Usage | Today Usage`
 
 ### Usage Display Types
 
@@ -113,8 +113,8 @@ Config files loaded in priority order:
           "git": { "enabled": true, "showSha": true },
           "model": { "enabled": true },
           "session": { "enabled": true, "type": "tokens" },
-          "today": { "enabled": true, "type": "tokens" },
-          "block": { "enabled": true, "type": "cost" },
+          "today": { "enabled": true, "type": "both" },
+          "block": { "enabled": false, "type": "cost" },
           "tmux": { "enabled": true }
         }
       }
@@ -141,8 +141,8 @@ To prevent segment cutoff, configure multiple lines:
       {
         "segments": {
           "session": { "enabled": true, "type": "tokens" },
-          "today": { "enabled": true, "type": "tokens" },
-          "block": { "enabled": true, "type": "cost" },
+          "today": { "enabled": true, "type": "both" },
+          "block": { "enabled": false, "type": "cost" },
           "tmux": { "enabled": true }
         }
       }
