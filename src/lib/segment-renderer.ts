@@ -88,8 +88,8 @@ export class SegmentRenderer {
 
     return {
       text: `${this.symbols.model} ${modelName}`,
-      bgColor: colors.todayBg,
-      fgColor: colors.todayFg,
+      bgColor: colors.modelBg,
+      fgColor: colors.modelFg,
     };
   }
 

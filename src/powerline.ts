@@ -170,6 +170,8 @@ export class PowerlineRenderer {
       modeFg: hexToAnsi(colorTheme.directory.fg, false),
       gitBg: hexToAnsi(colorTheme.git.bg, true),
       gitFg: hexToAnsi(colorTheme.git.fg, false),
+      modelBg: hexToAnsi(colorTheme.model.bg, true),
+      modelFg: hexToAnsi(colorTheme.model.fg, false),
       sessionBg: hexToAnsi(colorTheme.session.bg, true),
       sessionFg: hexToAnsi(colorTheme.session.fg, false),
       todayBg: hexToAnsi(colorTheme.today.bg, true),
@@ -193,7 +195,7 @@ export class PowerlineRenderer {
       case "git":
         return colors.gitBg;
       case "model":
-        return colors.todayBg;
+        return colors.modelBg;
       case "session":
         return colors.sessionBg;
       case "today":

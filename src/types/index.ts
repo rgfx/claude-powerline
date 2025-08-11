@@ -19,6 +19,8 @@ export interface PowerlineColors {
   modeFg: string;
   gitBg: string;
   gitFg: string;
+  modelBg: string;
+  modelFg: string;
   sessionBg: string;
   sessionFg: string;
   todayBg: string;
