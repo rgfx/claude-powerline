@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { platform } from "node:os";
 
 export interface GitInfo {
   branch: string;
@@ -11,6 +12,10 @@ export interface GitInfo {
 export class GitService {
   private sanitizePath(path: string): string {
     return path.replace(/[;&|`$(){}[\]<>'"\\]/g, "");
+  }
+
+  private getErrorRedirection(): string {
+    return platform() === "win32" ? "2>nul" : "2>/dev/null";
   }
 
   getGitInfo(workingDir: string, showSha = false): GitInfo | null {
@@ -37,7 +42,7 @@ export class GitService {
   private getBranch(workingDir: string): string | null {
     try {
       return (
-        execSync("git branch --show-current 2>/dev/null", {
+        execSync(`git branch --show-current ${this.getErrorRedirection()}`, {
           cwd: workingDir,
           encoding: "utf8",
           timeout: 1000,
@@ -50,7 +55,7 @@ export class GitService {
 
   private getStatus(workingDir: string): "clean" | "dirty" | "conflicts" {
     try {
-      const gitStatus = execSync("git status --porcelain 2>/dev/null", {
+      const gitStatus = execSync(`git status --porcelain ${this.getErrorRedirection()}`, {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 1000,
@@ -78,7 +83,7 @@ export class GitService {
   } {
     try {
       const aheadResult = execSync(
-        "git rev-list --count @{u}..HEAD 2>/dev/null",
+        `git rev-list --count @{u}..HEAD ${this.getErrorRedirection()}`,
         {
           cwd: workingDir,
           encoding: "utf8",
@@ -87,7 +92,7 @@ export class GitService {
       ).trim();
 
       const behindResult = execSync(
-        "git rev-list --count HEAD..@{u} 2>/dev/null",
+        `git rev-list --count HEAD..@{u} ${this.getErrorRedirection()}`,
         {
           cwd: workingDir,
           encoding: "utf8",
@@ -106,7 +111,7 @@ export class GitService {
 
   private getSha(workingDir: string): string | null {
     try {
-      const sha = execSync("git rev-parse --short=7 HEAD 2>/dev/null", {
+      const sha = execSync(`git rev-parse --short=7 HEAD ${this.getErrorRedirection()}`, {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 1000,
