@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/Owloops/claude-powerline/compare/v1.1.2...v1.1.3) (2025-08-12)
+
+
+### Bug Fixes
+
+* improve powerline arrow color transitions and prevent bleeding ([1a46bd0](https://github.com/Owloops/claude-powerline/commit/1a46bd0645ed8f349af11340994614e7ca40deee))
+
 ## [1.1.2](https://github.com/Owloops/claude-powerline/compare/v1.1.1...v1.1.2) (2025-08-11)
 
 
