@@ -59,7 +59,7 @@ export class PowerlineRenderer {
       .filter(([_, config]: [string, any]) => config?.enabled)
       .map(([type, config]: [string, any]) => ({ type, config }));
 
-    let line = "";
+    let line = colors.reset;
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
@@ -217,12 +217,13 @@ export class PowerlineRenderer {
   ): string {
     let output = `${bgColor}${fgColor} ${text} `;
 
+    const reset = "\x1b[0m";
+
     if (nextBgColor) {
       const arrowFgColor = extractBgToFg(bgColor);
-      output += `${nextBgColor}${arrowFgColor}${this.symbols.right}`;
+      output += `${reset}${nextBgColor}${arrowFgColor}${this.symbols.right}`;
     } else {
-      const arrowFgColor = extractBgToFg(bgColor);
-      output += `\x1b[0m${arrowFgColor}${this.symbols.right}\x1b[0m`;
+      output += `${reset}${extractBgToFg(bgColor)}${this.symbols.right}${reset}`;
     }
 
     return output;
