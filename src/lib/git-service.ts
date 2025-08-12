@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { platform } from "node:os";
 
 export interface GitInfo {
   branch: string;
@@ -11,6 +12,10 @@ export interface GitInfo {
 export class GitService {
   private sanitizePath(path: string): string {
     return path.replace(/[;&|`$(){}[\]<>'"\\]/g, "");
+  }
+
+  private getErrorRedirection(): string {
+    return platform() === "win32" ? "2>nul" : "2>/dev/null";
   }
 
   getGitInfo(workingDir: string, showSha = false): GitInfo | null {
@@ -36,11 +41,14 @@ export class GitService {
 
   private getBranch(workingDir: string): string | null {
     try {
+      // Use rev-parse which is more reliable than branch --show-current
+      const errorRedirect = this.getErrorRedirection();
       return (
-        execSync("git branch --show-current 2>/dev/null", {
+        execSync(`git rev-parse --abbrev-ref HEAD ${errorRedirect}`, {
           cwd: workingDir,
           encoding: "utf8",
           timeout: 1000,
+          stdio: ['ignore', 'pipe', 'ignore'],
         }).trim() || null
       );
     } catch {
@@ -50,10 +58,12 @@ export class GitService {
 
   private getStatus(workingDir: string): "clean" | "dirty" | "conflicts" {
     try {
-      const gitStatus = execSync("git status --porcelain 2>/dev/null", {
+      const errorRedirect = this.getErrorRedirection();
+      const gitStatus = execSync(`git status --porcelain ${errorRedirect}`, {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 1000,
+        stdio: ['ignore', 'pipe', 'ignore'],
       }).trim();
 
       if (!gitStatus) return "clean";
@@ -77,21 +87,24 @@ export class GitService {
     behind: number;
   } {
     try {
+      const errorRedirect = this.getErrorRedirection();
       const aheadResult = execSync(
-        "git rev-list --count @{u}..HEAD 2>/dev/null",
+        `git rev-list --count @{u}..HEAD ${errorRedirect}`,
         {
           cwd: workingDir,
           encoding: "utf8",
           timeout: 1000,
+          stdio: ['ignore', 'pipe', 'ignore'],
         }
       ).trim();
 
       const behindResult = execSync(
-        "git rev-list --count HEAD..@{u} 2>/dev/null",
+        `git rev-list --count HEAD..@{u} ${errorRedirect}`,
         {
           cwd: workingDir,
           encoding: "utf8",
           timeout: 1000,
+          stdio: ['ignore', 'pipe', 'ignore'],
         }
       ).trim();
 
@@ -106,10 +119,12 @@ export class GitService {
 
   private getSha(workingDir: string): string | null {
     try {
-      const sha = execSync("git rev-parse --short=7 HEAD 2>/dev/null", {
+      const errorRedirect = this.getErrorRedirection();
+      const sha = execSync(`git rev-parse --short=7 HEAD ${errorRedirect}`, {
         cwd: workingDir,
         encoding: "utf8",
         timeout: 1000,
+        stdio: ['ignore', 'pipe', 'ignore'],
       }).trim();
 
       return sha || null;
