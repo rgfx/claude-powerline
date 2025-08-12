@@ -145,6 +145,23 @@ export class SegmentRenderer {
     };
   }
 
+  renderUsage(usageInfo: UsageInfo, colors: any): SegmentData | null {
+    if (!usageInfo || !usageInfo.daily) return null;
+
+    const { percentage, used, total } = usageInfo.daily;
+    
+    if (percentage === null || used === null || total === null) return null;
+
+    const text = `${percentage.toFixed(1)}% (${this.formatTokensForUsage(used)}/${this.formatTokensForUsage(total)})`;
+    const usageColors = this.getUsageColors(percentage, colors);
+
+    return {
+      text,
+      bgColor: usageColors.bg,
+      fgColor: usageColors.fg,
+    };
+  }
+
   renderTmux(sessionId: string | null, colors: any): SegmentData | null {
     if (!sessionId) return null;
 
@@ -246,6 +263,26 @@ export class SegmentRenderer {
       }
 
       return result;
+    }
+  }
+
+  private formatTokensForUsage(tokens: number): string {
+    if (tokens >= 1_000_000) {
+      return `${(tokens / 1_000_000).toFixed(1)}M`;
+    } else if (tokens >= 1_000) {
+      return `${(tokens / 1_000).toFixed(1)}k`;
+    }
+    return tokens.toString();
+  }
+
+  private getUsageColors(percentage: number, colors: any): { bg: string; fg: string } {
+    // Match ccusage thresholds: Green 0-80%, Yellow 80-100%, Red >100%
+    if (percentage > 100) {
+      return { bg: colors.usageBg, fg: '#ef4444' }; // Red text
+    } else if (percentage >= 80) {
+      return { bg: colors.usageBg, fg: '#eab308' }; // Yellow text
+    } else {
+      return { bg: colors.usageBg, fg: '#16a34a' }; // Green text
     }
   }
 }

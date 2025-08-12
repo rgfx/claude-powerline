@@ -131,6 +131,9 @@ export class PowerlineRenderer {
           blockType
         );
 
+      case "usage":
+        return this.segmentRenderer.renderUsage(usageInfo, colors);
+
       case "tmux":
         const tmuxSessionId = this.tmuxService.getSessionId();
         return this.segmentRenderer.renderTmux(tmuxSessionId, colors);
@@ -178,6 +181,8 @@ export class PowerlineRenderer {
       todayFg: hexToAnsi(colorTheme.today.fg, false),
       blockBg: hexToAnsi(colorTheme.block.bg, true),
       blockFg: hexToAnsi(colorTheme.block.fg, false),
+      usageBg: hexToAnsi(colorTheme.usage.bg, true),
+      usageFg: hexToAnsi(colorTheme.usage.fg, false),
       burnLowBg: hexToAnsi(colorTheme.today.bg, true),
       burnFg: hexToAnsi(colorTheme.today.fg, false),
       tmuxBg: hexToAnsi(colorTheme.tmux.bg, true),
@@ -202,6 +207,8 @@ export class PowerlineRenderer {
         return colors.burnLowBg;
       case "block":
         return colors.blockBg;
+      case "usage":
+        return colors.usageBg;
       case "tmux":
         return colors.tmuxBg;
       default:
